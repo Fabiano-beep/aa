@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics Ball</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000000;
+    }
+
+    canvas {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%) translateX(-50%);
+      left: 50%;
+      z-index: 1;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #ddd;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 2;
+    }
+
+    details {
+      margin-bottom: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+    }
+
+    details summary:hover {
+      text-decoration: underline;
+    }
+
+    details p {
+      margin: 0;
+      padding: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <details>
+      <summary>General Settings</summary>
+      <p>
+        <label>Gravity: <span id="gravityValue">0.1</span><br><input type="range" id="gravityRange" min="-1" max="1"
+            step="0.01" value="0.1"></label><br>
+        <label>Friction: <span id="frictionValue">1</span><br><input type="range" id="frictionRange" min="0" max="1"
+            step="0.01" value="1"></label><br>
+      </p>
+    </details>
+
+    <details>
+      <summary>Bounce Settings</summary>
+      <p>
+        <label>Shrink circle on Bounce: <input type="checkbox" id="shrinkOnBounceCheckbox"></label><br>
+        <label>Shrink Factor: <span id="shrinkFactorValue">0.99</span><br><input type="range" id="shrinkFactorRange"
+            min="0.95" max="0.999" step="0.001" value="0.99"></label><br>
+        <label>Grow ball on Bounce: <input type="checkbox" id="growOnBounceCheckbox"></label><br>
+        <label>Grow Factor: <span id="growFactorValue">1.010</span><br><input type="range" id="growFactorRange"
+            min="1.001" max="1.1" step="0.001" value="1.010"></label><br>
+        <label>Increase Velocity on Bounce: <input type="checkbox" id="increaseVelocityCheckbox"></label><br>
+        <label>Velocity Speed: <span id="velocitySpeedValue">5</span><br><input type="range" id="velocitySpeedRange"
+            min="1" max="500" step="1" value="5"></label><br>
+        <label>Velocity Increase Factor: <span id="velocityFactorValue">1.01</span><br><input type="range"
+            id="velocityFactorRange" min="1" max="1.5" step="0.01" value="1.01"></label><br>
+      </p>
+    </details>
+
+    <details>
+      <summary>Visual Settings</summary>
+      <p>
+        <label>Change Color on Bounce: <input type="checkbox" id="colorChangeCheckbox"></label><br>
+        <label>Rainbow Color on Ball: <input type="checkbox" id="rainbowColorCheckbox" checked></label><br>
+        <label>Random Force on Bounce: <input type="checkbox" id="randomForceCheckbox"></label><br>
+        <label>Ball Size: <span id="ballSizeValue">20</span><br><input type="range" id="ballSizeRange" min="5" max="100"
+            step="1" value="20"></label><br>
+        <label>Toggle Trail: <input type="checkbox" id="toggleTrailCheckbox" checked></label><br>
+        <label>Trail Length: <span id="trailLengthValue">50</span><br><input type="range" id="trailLengthRange" min="1"
+            max="99999" step="1" value="50"></label><br>
+        <label>Circle Size: <span id="circleSizeValue">200</span><br><input type="range" id="circleSizeRange" min="100"
+            max="400" step="10" value="200"></label><br>
+      </p>
+    </details>
+
+    <details>
+      <summary>Audio Settings</summary>
+      <p>
+        <label>Load Notes from File: <br><input type="file" id="notesFileInput"></label><br>
+        <label>Toggle Bounce Sound: <input type="checkbox" id="toggleSoundCheckbox" checked></label><br>
+        <label>Volume: <span id="volumeValue">1</span><br><input type="range" id="volumeRange" min="0" max="1"
+            step="0.1" value="1"></label><br>
+        <label>Pitch: <span id="pitchValue">1</span><br><input type="range" id="pitchRange" min="0.1" max="2" step="0.1"
+            value="1"></label><br>
+      </p>
+    </details>
+
+    <details>
+      <summary>Ball Operations</summary>
+      <p>
+        <label>Add Ball: <button onclick="addBall()">Add</button></label><br>
+        <label>Add Ball on Click: <input type="checkbox" id="addOnClickCheckbox"></label><br>
+        <label>Add New Ball on Bounce: <input type="checkbox" id="addNewBallOnBounceCheckbox"></label><br>
+        <label>Remove Ball: <button onclick="removeBall()">Remove</button></label><br>
+        <label>Collide with Other Balls: <input type="checkbox" id="collideCheckbox"></label><br>
+        <label>Screen Shake on Bounce: <input type="checkbox" id="screenShakeCheckbox"></label><br>
+      </p>
+    </details>
+
+    <details>
+      <summary>Color Settings</summary>
+      <p>
+        <label>Background Color: <input type="color" id="backgroundColorPicker" value="#000000"></label><br>
+        <label>Circle Wall Color: <input type="color" id="circleWallColorPicker" value="#ffffff"></label><br>
+        <label>Ball Border Color: <input type="color" id="ballBorderColorPicker" value="#ffffff"></label><br>
+      </p>
+    </details>
+  </div>
+
+  <canvas id="physicsCanvas" width="800" height="800"></canvas>
+
+  <p style="color: white; position: absolute; bottom: 0px; right: 0px;">
+    Fans are welcome to enjoy and use this project for YouTube shorts/videos on your channel with owner permission.
+  </p>
+
+  <script>
+    // Initialize the audio context for playing sounds
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Get the canvas and its 2D context for drawing
+    const canvas = document.getElementById("physicsCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Array to store ball objects
+    const balls = [];
+
+    // Get various HTML elements used in the script
+    const collideCheckbox = document.getElementById("collideCheckbox");
+
+    // Set initial values for various physics and animation parameters
+    let gravity = 0.1;
+    let friction = 1;
+    let colorChangeEnabled = false;
+    let rainbowColorEnabled = true;
+    let randomForceEnabled = false;
+    let soundEnabled = true;
+    let volume = 1;
+    let pitch = 1;
+    let addOnClick = false;
+    let ballSize = 20;
+    let originalBallSize = ballSize;
+    let growTimer = null;
+    let customSoundFile = null;
+    let circleRadius = 200;
+    let shrinkOnBounce = false;
+    let originalCircleSize = circleRadius;
+    let shrinkTimer = null;
+    let growOnBounce = false;
+    let screenShakeOnBounce = false;
+    let currentBallSize = ballSize;
+    let increaseVelocityOnBounce = false;
+    let shrinkFactor = 0.99;
+    let growFactor = 1.01;
+    let velocityIncreaseFactor = 1.01;
+    let enableBallCollisions = false;
+    let addNewBallOnBounce = false;
+    let animationFrameId = null;
+    let trailEnabled = true;
+    let backgroundColor = "#000000";
+    let circleWallColor = "#fff";
+    let ballBorderColor = "#fff";
+    let selectedBall = null;
+    let trailLength = 50;
+    let glowIntensity = 0;
+    let lastBounceTime = 0;
+
+    // Event listener for checkbox change to handle adding a new ball on bounce
+    document.getElementById("addNewBallOnBounceCheckbox").addEventListener("change", handleAddNewBallOnBounceCheckboxChange);
+
+    // Function to check if a new ball can be added on bounce
+    function canAddBallOnBounce() {
+      const currentTime = new Date().getTime();
+      const timeSinceLastBounce = currentTime - lastBounceTime;
+      return timeSinceLastBounce >= 100;
+    }
+
+    // Check and add a new ball on bounce if conditions are met
+    if (addNewBallOnBounce && currentBallSize < circleRadius && canAddBallOnBounce()) {
+      lastBounceTime = new Date().getTime();
+      addNewBallOnBounceFunction(ball);
+    }
+
+    // Function to set the background color of the canvas
+    function setBackgroundColor(color) {
+      backgroundColor = color;
+      draw();
+    }
+
+    // Function to set the color of the circle wall
+    function setCircleWallColor(color) {
+      circleWallColor = color;
+      draw();
+    }
+
+    // Function to set the color of the ball border
+    function setBallBorderColor(color) {
+      ballBorderColor = color;
+      draw();
+    }
+
+    // Event listener for checkbox change to handle adding a new ball on bounce
+    document.getElementById("addNewBallOnBounceCheckbox").addEventListener("change", handleAddNewBallOnBounceCheckboxChange);
+
+    // Function to handle the change of "Add New Ball on Bounce" checkbox
+    function handleAddNewBallOnBounceCheckboxChange() {
+      if (currentBallSize < circleRadius) {
+        addNewBallOnBounce = this.checked;
+      } else {
+        this.checked = false;
+        addNewBallOnBounce = false;
+      }
+    }
+
+    // Set the center coordinates of the circle
+    const circleCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+
+    // Array to store note sequences for sound
+    let soundFiles = [
+      ["F5"],
+      ["D5"],
+      ["A4"],
+      ["D5"],
+      ["F5"],
+      ["D5"],
+      ["A4"],
+      ["D5"],
+      ["F5"],
+      ["C5"],
+      ["A4"],
+      ["C5"],
+      ["F5"],
+      ["C5"],
+      ["A4"],
+      ["C5"],
+      ["E5"],
+      ["Db5"],
+      ["A4"],
+      ["Db5"],
+      ["E5"],
+      ["Db5"],
+      ["A4"],
+      ["Db5"],
+      ["E5"],
+      ["Db5"],
+      ["A4"],
+      ["Db5"]
+    ];
+
+    // Index for the current sound set
+    let soundIndex = 0;
+    let currentSoundSet = soundFiles[soundIndex];
+    let audioSources = [];
+
+    // Load audio sources and initialize sounds
+    loadSounds();
+
+    // Function to load audio sources from file paths
+    function loadSounds() {
+      audioSources = currentSoundSet.map(note => {
+        return {
+          buffer: null,
+          path: `./notes/${note}.mp3`,
+        };
+      });
+
+      // Load audio buffers asynchronously
+      Promise.all(audioSources.map(source => loadAudioBuffer(source.path)))
+        .then(buffers => {
+          buffers.forEach((buffer, index) => {
+            audioSources[index].buffer = buffer;
+          });
+        })
+        .catch(error => console.error("Error loading audio buffers:", error));
+    }
+
+    // Function to load an audio buffer from a file path
+    function loadAudioBuffer(filePath) {
+      return fetch(filePath)
+        .then(response => response.arrayBuffer())
+        .then(buffer => audioContext.decodeAudioData(buffer));
+    }
+
+    // Event listener for file input change to load notes from a file
+    document.getElementById("notesFileInput").addEventListener("change", function (event) {
+      const fileInput = event.target;
+      const file = fileInput.files[0];
+
+      // Read file content and load notes
+      if (file) {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const notesText = e.target.result;
+          loadNotesFromString(notesText);
+        };
+
+        reader.readAsText(file);
+      }
+    });
+
+    // Function to load notes from a string
+    function loadNotesFromString(notesText) {
+      const lines = notesText.split("\n");
+      const notes = lines.map(line => line.split(" ").filter(Boolean));
+
+      // Update soundFiles array with new notes
+      soundFiles.length = 0;
+      soundFiles.push(...notes);
+
+      soundIndex = 0;
+      currentSoundSet = soundFiles[soundIndex];
+      loadSounds();
+    } // Thanks to Tia for helping with this function, making it easier for everyone to create sound/music using notes on each bounce.
+
+    // Function to play a sound when a ball bounces
+    function playBounceSound() {
+      if (soundEnabled && circleRadius > currentBallSize) {
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = volume;
+
+        audioSources.forEach(source => {
+          const instance = createAudioSource(source.buffer);
+          const sourceGainNode = audioContext.createGain();
+          sourceGainNode.connect(gainNode);
+          sourceGainNode.gain.value = volume;
+          instance.connect(sourceGainNode);
+          instance.playbackRate.value = pitch;
+          instance.start();
+        });
+
+        gainNode.connect(audioContext.destination);
+
+        soundIndex = (soundIndex + 1) % soundFiles.length;
+        currentSoundSet = soundFiles[soundIndex];
+        loadSounds();
+      }
+    }
+
+    // Function to create an audio source with a given buffer
+    function createAudioSource(buffer) {
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      return source;
+    }
+
+    // Event listener for checkbox change to toggle shrinking on bounce
+    document.getElementById("shrinkOnBounceCheckbox").addEventListener("change", function () {
+      shrinkOnBounce = this.checked;
+
+      // Clear the shrink timer if unchecked
+      if (!shrinkOnBounce && shrinkTimer) {
+        clearTimeout(shrinkTimer);
+        shrinkTimer = null;
+      }
+    });
+
+    // Event listener for checkbox change to toggle growing on bounce
+    document.getElementById("growOnBounceCheckbox").addEventListener("change", function () {
+      growOnBounce = this.checked;
+    });
+
+    // Event listener for checkbox change to toggle screen shake on bounce
+    document.getElementById("screenShakeCheckbox").addEventListener("change", function () {
+      screenShakeOnBounce = this.checked;
+    });
+
+    // Event listener for checkbox change to toggle ball trail visibility
+    document.getElementById("toggleTrailCheckbox").addEventListener("change", function () {
+      trailEnabled = this.checked;
+    });
+
+    // Event listener for range input change to update trail length
+    document.getElementById("trailLengthRange").addEventListener("input", function () {
+      trailLength = parseInt(this.value);
+      document.getElementById("trailLengthValue").textContent = trailLength;
+    });
+
+    // Event listener for checkbox change to toggle adding a ball on click
+    document.getElementById("addOnClickCheckbox").addEventListener("change", function () {
+      addOnClick = this.checked;
+    });
+
+    // Event listener for canvas click to add a ball at the mouse position
+    canvas.addEventListener('click', (e) => {
+      if (addOnClick) {
+        addBallAtMousePosition(e);
+      }
+    });
+
+    // Event listener for checkbox change to toggle ball collisions
+    collideCheckbox.addEventListener("change", function () {
+      enableBallCollisions = this.checked;
+    });
+
+    // Variables for audio buffer and source
+    let audioBuffer;
+    let audioSource;
+
+    // Function to create a bounce sound
+    function createBounceSound() {
+      const bounceSound = audioContext.createBufferSource();
+      return bounceSound;
+    }
+
+    // Function to generate a random color
+    function getRandomColor() {
+      const letters = "0123456789ABCDEF";
+      let color = "#";
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 8)];
+      }
+      return color;
+    }
+
+    // Function to get a rainbow color based on time
+    function getRainbowColor() {
+      const hue = (Date.now() * 0.1) % 360;
+      const saturation = 100;
+      const lightness = 50;
+
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    // Function to apply a random force to a ball's velocity
+    function applyRandomForce(ball) {
+      ball.velocity.x += (Math.random() * 2 - 1) * 0.2;
+      ball.velocity.y += (Math.random() * 2 - 1) * 0.2;
+    }
+
+    // When you click the mouse on the canvas, this function gets triggered.
+    canvas.addEventListener("mousedown", (e) => {
+      // Get the mouse's X and Y coordinates relative to the canvas.
+      const mouseX = e.clientX - canvas.getBoundingClientRect().left;
+      const mouseY = e.clientY - canvas.getBoundingClientRect().top;
+
+      // Loop through all the balls, starting from the top (latest added).
+      for (let i = balls.length - 1; i >= 0; i--) {
+        const ball = balls[i];
+
+        // Calculate the distance between the mouse click and the center of each ball.
+        const distance = Math.sqrt((mouseX - ball.x) ** 2 + (mouseY - ball.y) ** 2);
+
+        // If the distance is less than or equal to the ball's radius, it means the mouse clicked on the ball.
+        if (distance <= ball.radius) {
+          // Select the clicked ball, so we can move it around.
+          selectedBall = ball;
+          break; // Stop looking for other balls.
+        }
+      }
+    });
+
+    // When you release the mouse button, this function is triggered.
+    canvas.addEventListener("mouseup", () => {
+      // Deselect the ball, so it won't follow the mouse anymore.
+      selectedBall = null;
+    });
+
+    // When you move the mouse on the canvas, this function is triggered.
+    canvas.addEventListener("mousemove", (e) => {
+      // If a ball is selected (clicked), update its position to follow the mouse.
+      if (selectedBall) {
+        // Update the ball's position based on the new mouse coordinates.
+        selectedBall.x = e.clientX - canvas.getBoundingClientRect().left;
+        selectedBall.y = e.clientY - canvas.getBoundingClientRect().top;
+      }
+    });
+
+    // Function to add a ball at the mouse position when clicked
+    function addBallAtMousePosition(event) {
+      // Get the canvas boundaries
+      const rect = canvas.getBoundingClientRect();
+
+      // Calculate the mouse coordinates relative to the canvas
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      // Create a new ball at the mouse position and add it to the list of balls
+      balls.push(createBallAtPosition(mouseX, mouseY));
+    }
+
+    // Function to add a ball to the simulation
+    function addBall() {
+      const speed = 8;
+      balls.push(createBall(speed));
+    }
+
+    // Function to remove a ball from the simulation
+    function removeBall() {
+      if (balls.length > 0) {
+        balls.pop();
+      }
+    }
+
+    // Function to create a ball at a specific position
+    function createBallAtPosition(x, y) {
+      // Return a ball object with properties like position, size, color, velocity, and a trail
+      return {
+        x: x, // x-coordinate of the ball
+        y: y, // y-coordinate of the ball
+        radius: currentBallSize, // size of the ball
+        mass: 5,  // a measure of the ball's "heaviness"
+        color: getRandomColor(), // a random color for the ball
+        velocity: {
+          x: Math.random() * 2 - 1, // random horizontal speed between -1 and 1
+          y: Math.random() * 2 - 1  // random vertical speed between -1 and 1
+        },
+        trail: [] // an empty trail to track the ball's previous positions
+      };
+    }
+
+    // Variable to keep track of the next ball's ID
+    let nextBallId = 1;
+
+    // Function to create a ball with a given speed
+    function createBall(speed) {
+      // Generate a random angle and distance to position the new ball around a circle
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * circleRadius;
+
+      // Create a new ball object with properties like ID, position, size, color, velocity, and a trail
+      const newBall = {
+        id: nextBallId++, // a unique ID for each ball
+        x: circleCenter.x + Math.cos(angle) * distance, // x-coordinate based on circle calculations
+        y: circleCenter.y + Math.sin(angle) * distance, // y-coordinate based on circle calculations
+        radius: currentBallSize, // size of the ball
+        mass: 5, // a measure of the ball's "heaviness"
+        color: rainbowColorEnabled ? getRainbowColor() : getRandomColor(), // color based on settings
+        velocity: {
+          x: Math.cos(angle) * speed, // horizontal speed based on the given speed and angle
+          y: Math.sin(angle) * speed, // vertical speed based on the given speed and angle
+        },
+        trail: []  // an empty trail to track the ball's previous positions
+      };
+
+      return newBall; // Return the newly created ball
+    }
+
+    // Function to handle collisions between balls
+    function handleBallCollisions() {
+      // Check if ball collisions are enabled
+      if (enableBallCollisions) {
+        // Loop through each ball
+        balls.forEach((ball1, i) => {
+          // Check for collisions with other balls, starting from the next ball in the list
+          balls.slice(i + 1).forEach((ball2, j) => {
+            // Calculate the distance between the centers of the two balls
+            const dx = ball2.x - ball1.x;
+            const dy = ball2.y - ball1.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Check if the balls are touching or overlapping
+            if (distance < ball1.radius + ball2.radius) {
+              // Calculate the amount of overlap and the angle of collision
+              const overlap = (ball1.radius + ball2.radius) - distance;
+              const angle = Math.atan2(dy, dx);
+
+              // Calculate the movement needed to separate the overlapping balls
+              const moveX = overlap * Math.cos(angle) * 0.5;
+              const moveY = overlap * Math.sin(angle) * 0.5;
+
+              // Move the balls to resolve the overlap
+              ball1.x -= moveX;
+              ball1.y -= moveY;
+              ball2.x += moveX;
+              ball2.y += moveY;
+
+              // Calculate the collision normal (unit vector pointing from ball1 to ball2)
+              const nx = dx / distance;
+              const ny = dy / distance;
+
+              // Calculate the relative velocity of the balls along the collision normal
+              const dvx = ball2.velocity.x - ball1.velocity.x;
+              const dvy = ball2.velocity.y - ball1.velocity.y;
+
+              // Calculate the dot product of relative velocity and collision normal
+              const dotProduct = dvx * nx + dvy * ny;
+
+              // Calculate the impulse to be applied for the collision resolution
+              const m1 = ball1.mass || 1; // Mass of ball1 (default to 1 if not specified)
+              const m2 = ball2.mass || 1; // Mass of ball2 (default to 1 if not specified)
+              const impulse = (2 * dotProduct) / (m1 + m2);
+
+              // Update the velocities of the balls based on the impulse
+              ball1.velocity.x += impulse * m2 * nx;
+              ball1.velocity.y += impulse * m2 * ny;
+              ball2.velocity.x -= impulse * m1 * nx;
+              ball2.velocity.y -= impulse * m1 * ny;
+            }
+          });
+        });
+      }
+    }
+
+    // Function to add a new ball on bounce if enabled
+    function addNewBallOnBounceFunction(bouncingBall) {
+      // Check if the option to add a new ball on bounce is enabled
+      if (addNewBallOnBounce) {
+        // Create a new ball using the createBall function
+        const newBall = createBall();
+
+        // Set the new ball's position and velocity based on the bouncing ball
+        const angle = Math.random() * Math.PI * 2;
+        const randomRadius = Math.random() * (circleRadius - newBall.radius);
+
+        // Calculate the new position around the circle for the new ball
+        newBall.x = circleCenter.x + randomRadius * Math.cos(angle);
+        newBall.y = circleCenter.y + randomRadius * Math.sin(angle);
+
+        // Inherit the velocity from the bouncing ball
+        newBall.velocity.x = bouncingBall.velocity.x;
+        newBall.velocity.y = bouncingBall.velocity.y;
+
+        // Add the new ball to the array of balls
+        balls.push(newBall);
+      }
+    }
+
+    // Function to update the simulation state
+    function update() {
+      // Handle ball collisions and physics
+      handleBallCollisions();
+
+      // Update each ball's position and velocity
+      balls.forEach((ball, index) => {
+        ball.velocity.y += gravity; // Apply gravity to make balls fall down
+        ball.velocity.x *= friction; // Apply friction to gradually slow down horizontal motion
+        ball.velocity.y *= friction; // Apply friction to gradually slow down vertical motion
+        ball.x += ball.velocity.x; // Update ball's horizontal position based on its velocity
+        ball.y += ball.velocity.y; // Update ball's vertical position based on its velocity
+
+        // Change ball color in rainbow mode
+        if (rainbowColorEnabled && circleRadius > currentBallSize && ball.radius < circleRadius) {
+          ball.color = getRainbowColor(); // Set the ball color to a rainbow color
+        }
+
+        // Bounce off the circle boundary
+        const distance = Math.sqrt((ball.x - circleCenter.x) ** 2 + (ball.y - circleCenter.y) ** 2);
+        if (distance + ball.radius > circleRadius) {
+          // Reflect the ball's velocity vector based on the circle's boundary
+          const angle = Math.atan2(ball.y - circleCenter.y, ball.x - circleCenter.x);
+          ball.x = circleCenter.x + (circleRadius - ball.radius) * Math.cos(angle); // Move the ball to the circle's edge
+          ball.y = circleCenter.y + (circleRadius - ball.radius) * Math.sin(angle);
+          const dotProduct = (ball.velocity.x * Math.cos(angle)) + (ball.velocity.y * Math.sin(angle));
+          ball.velocity.x -= 2 * dotProduct * Math.cos(angle); // Reflect horizontal velocity
+          ball.velocity.y -= 2 * dotProduct * Math.sin(angle); // Reflect vertical velocity
+
+          // Increase glow intensity on bounce
+          glowIntensity = 1;
+
+          // Change ball color randomly on bounce
+          if (colorChangeEnabled && circleRadius > currentBallSize && ball.radius < circleRadius) {
+            ball.color = getRandomColor(); // Set the ball color to a random color
+          }
+
+          // Apply random force to the ball's velocity
+          if (randomForceEnabled) {
+            applyRandomForce(ball);
+          }
+
+          // Shrink the circle on bounce
+          if (shrinkOnBounce) {
+            circleRadius *= shrinkFactor; // Reduce the circle's size
+
+            // Freeze the simulation when the circle is small enough
+            if (circleRadius <= currentBallSize) {
+              friction = 0; // Stop the motion
+
+              // Set a timer to expand the circle after a delay
+              if (shrinkTimer === null) {
+                shrinkTimer = setTimeout(() => {
+                  expandCircleToOriginalSize();
+                  shrinkTimer = null;
+                }, 2000);
+              }
+            }
+          }
+
+          // Grow the ball on bounce
+          if (growOnBounce) {
+            currentBallSize *= growFactor; // Increase the ball's size
+            ball.radius = currentBallSize;
+
+            // Stop growing when reaching the circle's size
+            if (currentBallSize >= circleRadius) {
+              circleRadius = currentBallSize;
+
+              // Set a timer to shrink the ball back to its original size after a delay
+              if (growTimer === null) {
+                growTimer = setTimeout(() => {
+                  shrinkBallToOriginalSize(ball);
+                  growTimer = null;
+                }, 2000);
+              }
+            }
+          }
+
+          // Add a new ball on bounce if enabled
+          if (addNewBallOnBounce && currentBallSize < circleRadius && canAddBallOnBounce()) {
+            lastBounceTime = new Date().getTime();
+            addNewBallOnBounceFunction(ball);
+          }
+
+          // Increase ball velocity on bounce
+          if (increaseVelocityOnBounce) {
+            ball.velocity.x *= velocityIncreaseFactor; // Increase horizontal velocity
+            ball.velocity.y *= velocityIncreaseFactor; // Increase vertical velocity
+          }
+
+          // Screen shake effect on bounce
+          if (screenShakeOnBounce) {
+            const intensity = 5; // Intensity of the screen shake
+            const duration = 300; // Duration of the screen shake
+            const dx = intensity * Math.cos(angle);
+            const dy = intensity * Math.sin(angle);
+            screenShake(dx, dy, duration); // Apply screen shake effect
+          }
+
+          // Play a bounce sound
+          playBounceSound();
+        }
+
+        // Trail effect
+        if (trailEnabled) {
+          ball.trail.push({ x: ball.x, y: ball.y, color: ball.color, alpha: 1 }); // Add a point to the ball's trail
+
+          // Keep trail length within limit
+          while (ball.trail.length > trailLength) {
+            ball.trail.shift(); // Remove oldest points from the trail
+          }
+        }
+      });
+    }
+
+    // Function to draw the current state of the simulation
+    function draw() {
+      // Clear the canvas to start with a fresh drawing
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw the background with the specified color
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw the circular boundary of the simulation
+      ctx.beginPath();
+      ctx.arc(circleCenter.x, circleCenter.y, circleRadius, 0, Math.PI * 2);
+      ctx.shadowBlur = 50 * glowIntensity; // Add a glowing effect to the circle
+      ctx.shadowColor = "#fff"; // Glow color
+      ctx.strokeStyle = circleWallColor; // Color of the circle boundary
+      ctx.lineWidth = 2; // Thickness of the circle boundary
+      ctx.stroke();
+      ctx.shadowBlur = 0; // Reset the shadow effect
+
+      // Reduce the glowing intensity over time for a fading effect
+      glowIntensity *= 0.92;
+
+      // Draw each ball in the simulation
+      balls.forEach((ball) => {
+        // Draw the trail behind each ball if trail is enabled
+        if (trailEnabled) {
+          ball.trail.forEach((point, i, arr) => {
+            ctx.globalAlpha = point.alpha; // Adjust transparency of the trail points
+            ctx.fillStyle = point.color; // Set color for each trail point
+            const size = ball.radius * (i / arr.length); // Vary the size of each trail point
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+
+        // Draw the main body of the ball
+        ctx.fillStyle = ball.color; // Set color for the ball
+        ctx.strokeStyle = ballBorderColor; // Set border color for the ball
+        ctx.lineWidth = 2; // Set border thickness
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2); // Draw a circle for the ball
+        ctx.fill(); // Fill the circle with color
+        ctx.stroke(); // Draw the border of the circle
+      });
+
+      // Draw the count of balls in the simulation
+      drawBallCount();
+    }
+
+    // Function to draw the ball count on the canvas
+    function drawBallCount() {
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+
+      const textX = circleCenter.x - 40;
+      const textY = circleCenter.y - circleRadius - 10;
+
+      ctx.fillText(`Ball count: ${balls.length}`, textX, textY);
+    }
+
+    // Function to shrink a ball back to its original size
+    function shrinkBallToOriginalSize(ball) {
+      // Set the interval and step size for the shrinking process
+      const shrinkInterval = 3;
+      const shrinkStep = 2;
+
+      // Store the original size of the ball
+      const originalBallSize = ballSize;
+
+      // Calculate the number of steps needed to shrink the ball
+      const steps = Math.ceil((ball.radius - originalBallSize) / shrinkStep);
+      let currentStep = 0;
+
+      // Shrink the ball gradually using intervals
+      const shrinkIntervalId = setInterval(() => {
+        currentStep++;
+
+        // Check if the ball should continue shrinking
+        if (currentStep <= steps) {
+          ball.radius -= shrinkStep; // Reduce the ball size by the step amount
+        } else {
+          clearInterval(shrinkIntervalId); // Stop the shrinking process when completed
+          currentBallSize = originalBallSize; // Reset the current ball size to its original value
+        }
+      }, shrinkInterval);
+    }
+
+    // Function to expand the circle back to its original size
+    function expandCircleToOriginalSize() {
+      // Set the interval and step size for the expanding process
+      const expansionInterval = 10;
+      const expansionStep = 2;
+
+      // Calculate the number of steps needed to expand the circle
+      const steps = Math.ceil((originalCircleSize - circleRadius) / expansionStep);
+      let currentStep = 0;
+
+      // Expand the circle gradually using intervals
+      const expansionIntervalId = setInterval(() => {
+        currentStep++;
+
+        // Check if the circle should continue expanding
+        if (currentStep <= steps) {
+          circleRadius += expansionStep; // Increase the circle size by the step amount
+        } else {
+          clearInterval(expansionIntervalId); // Stop the expanding process when completed
+          friction = 1; // Reset the friction to its original value
+        }
+      }, expansionInterval);
+    }
+
+
+    // Function to create a screen shake effect
+    function screenShake(dx, dy, duration) {
+      // Save the original position of the circle
+      const originalX = circleCenter.x;
+      const originalY = circleCenter.y;
+
+      // Temporarily move the circle's position to create a shaking effect
+      circleCenter.x += dx; // Move horizontally by the specified amount (dx)
+      circleCenter.y += dy; // Move vertically by the specified amount (dy)
+
+      // Restore the circle to its original position after the shaking duration
+      setTimeout(() => {
+        circleCenter.x = originalX; // Reset the horizontal position
+        circleCenter.y = originalY; // Reset the vertical position
+      }, duration); // Wait for the specified duration before restoring
+    }
+
+    // Main game loop
+    function gameLoop() {
+      update(); // Update the simulation
+      draw();   // Draw the updated state
+      animationFrameId = requestAnimationFrame(gameLoop); // Continue the loop
+    }
+
+    // Start the animation loop
+    function startAnimation() {
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    document.getElementById("gravityRange").addEventListener("input", function () {
+      gravity = parseFloat(this.value);
+      document.getElementById("gravityValue").innerText = gravity;
+    });
+
+    document.getElementById("frictionRange").addEventListener("input", function () {
+      friction = parseFloat(this.value);
+      document.getElementById("frictionValue").innerText = friction;
+    });
+
+    document.getElementById("circleSizeRange").addEventListener("input", function () {
+      circleRadius = parseInt(this.value);
+      document.getElementById("circleSizeValue").innerText = circleRadius;
+    });
+
+    document.getElementById("ballSizeRange").addEventListener("input", function () {
+      currentBallSize = parseInt(this.value);
+      document.getElementById("ballSizeValue").innerText = currentBallSize;
+      updateBallSize();
+    });
+
+    function updateBallSize() {
+      balls.forEach(ball => {
+        ball.radius = currentBallSize;
+      });
+    }
+
+    document.getElementById("velocitySpeedRange").addEventListener("input", function () {
+      balls.forEach(ball => {
+        const speed = parseFloat(this.value);
+        const currentSpeed = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
+        ball.velocity.x = (ball.velocity.x / currentSpeed) * speed;
+        ball.velocity.y = (ball.velocity.y / currentSpeed) * speed;
+        document.getElementById("velocitySpeedValue").innerText = speed;
+      });
+    });
+
+    document.getElementById("colorChangeCheckbox").addEventListener("change", function () {
+      colorChangeEnabled = this.checked;
+      if (colorChangeEnabled) {
+        rainbowColorEnabled = false;
+        document.getElementById("rainbowColorCheckbox").checked = false;
+      }
+    });
+
+    document.getElementById("rainbowColorCheckbox").addEventListener("change", function () {
+      rainbowColorEnabled = this.checked;
+      if (rainbowColorEnabled) {
+        colorChangeEnabled = false;
+        document.getElementById("colorChangeCheckbox").checked = false;
+      }
+    });
+
+    document.getElementById("randomForceCheckbox").addEventListener("change", function () {
+      randomForceEnabled = this.checked;
+    });
+
+    document.getElementById("toggleSoundCheckbox").addEventListener("change", function () {
+      soundEnabled = this.checked;
+    });
+
+    document.getElementById("volumeRange").addEventListener("input", function () {
+      volume = parseFloat(this.value);
+      document.getElementById("volumeValue").innerText = volume;
+    });
+
+    document.getElementById("pitchRange").addEventListener("input", function () {
+      pitch = parseFloat(this.value);
+      document.getElementById("pitchValue").innerText = pitch;
+    });
+
+    document.getElementById("increaseVelocityCheckbox").addEventListener("change", function () {
+      increaseVelocityOnBounce = this.checked;
+    });
+
+    document.getElementById("shrinkFactorRange").addEventListener("input", function () {
+      shrinkFactor = parseFloat(this.value);
+      document.getElementById("shrinkFactorValue").innerText = shrinkFactor;
+    });
+
+    document.getElementById("growFactorRange").addEventListener("input", function () {
+      growFactor = parseFloat(this.value);
+      document.getElementById("growFactorValue").innerText = growFactor;
+    });
+
+    document.getElementById("velocityFactorRange").addEventListener("input", function () {
+      velocityIncreaseFactor = parseFloat(this.value);
+      document.getElementById("velocityFactorValue").innerText = velocityIncreaseFactor;
+    });
+
+    function setBackgroundColor(color) {
+      backgroundColor = color;
+      draw();
+    }
+
+    function setCircleWallColor(color) {
+      circleWallColor = color;
+      draw();
+    }
+
+    function setBallBorderColor(color) {
+      ballBorderColor = color;
+      draw();
+    }
+
+    document.getElementById('backgroundColorPicker').addEventListener('input', function (event) {
+      setBackgroundColor(event.target.value);
+    });
+
+    document.getElementById('circleWallColorPicker').addEventListener('input', function (event) {
+      setCircleWallColor(event.target.value);
+    });
+
+    document.getElementById('ballBorderColorPicker').addEventListener('input', function (event) {
+      setBallBorderColor(event.target.value);
+    });
+
+    startAnimation();
+
+    addBall();
+
+  </script>
+</body>
+
+</html>
